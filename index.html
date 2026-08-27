@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Consulta de Estoque</title>
-    <!-- SheetJS para leitura de arquivos Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             /* Cores Gerais Modernas */
@@ -75,64 +73,16 @@
             padding-bottom: 12px;
         }
 
-        /* Upload */
-        .file-upload {
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            padding: 16px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 16px;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-
-        .file-upload:hover {
-            background: #f1f5f9;
-            border-color: var(--accent);
-        }
-
-        .file-upload input[type="file"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .upload-label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--accent);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .upload-hint {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: normal;
-        }
-
         /* Status */
         .status {
             padding: 12px 16px;
             border-radius: 10px;
             font-size: 0.88rem;
             margin-bottom: 16px;
-            display: none;
-            word-break: break-word;
-        }
-
-        .status.success {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            word-break: break-word;
             background: var(--success-bg);
             color: var(--success-text);
             border: 1px solid var(--success-border);
@@ -391,23 +341,14 @@
     <div class="header-title">
         📦 Consulta de Estoque
     </div>
-    
-    <!-- Upload -->
-    <div class="file-upload" id="upload-box">
-        <input type="file" id="excel-file" accept=".xlsx, .xls">
-        <div class="upload-label">
-            <span>📄 Carregar / Atualizar Planilha</span>
-            <span class="upload-hint">Toque para selecionar o arquivo .xlsx ou .xls</span>
-        </div>
-    </div>
 
-    <!-- Status -->
-    <div class="status" id="status-msg"></div>
+    <!-- Status da Sincronização -->
+    <div class="status" id="status-msg">🔄 Conectando ao Supabase...</div>
 
     <!-- Campo de Pesquisa -->
     <div class="search-container">
         <div class="search-box-wrapper">
-            <input type="text" id="search-input" class="search-input" placeholder="Carregue uma planilha para buscar..." disabled autocomplete="off" autocapitalize="none">
+            <input type="text" id="search-input" class="search-input" placeholder="Carregando dados..." disabled autocomplete="off" autocapitalize="none">
             <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
         </div>
     </div>
@@ -418,55 +359,55 @@
 
 <script>
     let inventoryData = [];
-    const STORAGE_KEY = 'estoque_data_v5';
-    const FILENAME_KEY = 'estoque_filename_v5';
+    
+    // Credenciais do Supabase
+    const SUPABASE_URL = "https://qqxunufyleqwicgojlpe.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHVudWZ5bGVxd2ljZ29qbHBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDUyMzAsImV4cCI6MjEwMzM4MTIzMH0.EW_5ct0NIBmHZl76A3-gZZ_Qw6mNLZsoh_iFC7Ar7EQ";
+
+    // Busca os dados no Supabase
+    async function carregarEstoqueDoSupabase() {
+        try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/estoque_pulmao?select=*`, {
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`
+                }
+            });
+
+            if (!response.ok) throw new Error("Erro na requisição com Supabase");
+
+            const dadosBrutos = await response.json();
+            
+            // Mapeia os dados do Supabase para exibir os rótulos amigáveis na tela
+            inventoryData = dadosBrutos.map(item => ({
+                "Endereço": item.endereco || '-',
+                "Código": item.produto_codigo || '-',
+                "Descrição": item.produto_desc || '-',
+                "Quantidade": item.quantidade ?? 0,
+                "MovUn": item.movun_code || '-'
+            }));
+
+            const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            showStatus(`✓ Base ativa: <strong>Supabase (Nuvem)</strong> às ${agora} (${inventoryData.length} itens)`, 'success');
+            enableSearch();
+            performSearch();
+
+        } catch (error) {
+            console.error("Erro ao carregar dados do Supabase:", error);
+            showStatus(`❌ Erro de conexão com a base de dados em nuvem.`, 'status');
+        }
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        const savedFilename = localStorage.getItem(FILENAME_KEY);
-        
-        if (savedData) {
-            try {
-                inventoryData = JSON.parse(savedData);
-                showStatus(`✓ Base ativa: <strong>${savedFilename || 'Planilha salva'}</strong> (${inventoryData.length} itens)`, 'success');
-                enableSearch();
-            } catch (e) {
-                console.error("Erro ao carregar dados salvos", e);
-            }
-        }
-    });
-
-    document.getElementById('excel-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheet];
-                
-                inventoryData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(inventoryData));
-                localStorage.setItem(FILENAME_KEY, file.name);
-
-                showStatus(`✓ Planilha <strong>${file.name}</strong> salva com sucesso! (${inventoryData.length} registros)`, 'success');
-                enableSearch();
-                performSearch();
-            } catch (err) {
-                alert("Erro ao ler a planilha. Verifique se o arquivo é válido.");
-            }
-        };
-        reader.readAsArrayBuffer(file);
+        carregarEstoqueDoSupabase();
+        // Atualiza a tela sozinho a cada 2 minutos
+        setInterval(carregarEstoqueDoSupabase, 2 * 60 * 1000);
     });
 
     function enableSearch() {
         const searchInput = document.getElementById('search-input');
         searchInput.disabled = false;
-        searchInput.placeholder = "Digite o termo de busca...";
+        searchInput.placeholder = "Digite o código, descrição ou endereço...";
     }
 
     function showStatus(message, type) {
