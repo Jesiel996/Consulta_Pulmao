@@ -26,12 +26,12 @@
             --highlight: #fef08a;
 
             /* Cores Suaves/Pastel para Comparação */
-            --border-min: #fca5a5;  /* Rosa/Vermelho bem suave */
-            --bg-min: #fef2f2;      /* Fundo avermelhado leve */
+            --border-min: #fca5a5;
+            --bg-min: #fef2f2;
             --text-min: #991b1b;
             
-            --border-max: #86efac;  /* Verde pastel suave */
-            --bg-max: #f0fdf4;      /* Fundo esverdeado leve */
+            --border-max: #86efac;
+            --bg-max: #f0fdf4;
             --text-max: #166534;
         }
 
@@ -93,7 +93,7 @@
             font-weight: 500;
         }
 
-        /* Busca e Filtro de Setor */
+        /* Busca e Filtro de Setores */
         .search-container {
             position: sticky;
             top: 0;
@@ -112,7 +112,14 @@
             }
         }
 
-        .sector-select {
+        /* Multi-Select Dropdown Customizado */
+        .multi-select-container {
+            position: relative;
+            min-width: 220px;
+        }
+
+        .select-btn {
+            width: 100%;
             padding: 12px 16px;
             border: 1px solid var(--border-color);
             border-radius: 10px;
@@ -122,14 +129,63 @@
             font-weight: 600;
             outline: none;
             cursor: pointer;
-            min-width: 180px;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             transition: all 0.2s;
         }
 
-        .sector-select:focus {
+        .select-btn:after {
+            content: '▼';
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 8px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
             background-color: #ffffff;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            z-index: 100;
+            max-height: 280px;
+            overflow-y: auto;
+            margin-top: 4px;
+            padding: 6px;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: background 0.15s;
+            user-select: none;
+        }
+
+        .dropdown-option:hover {
+            background-color: #f1f5f9;
+        }
+
+        .dropdown-option input[type="checkbox"] {
+            margin-right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--accent);
         }
 
         .search-box-wrapper {
@@ -379,11 +435,16 @@
     <!-- Status da Sincronização -->
     <div class="status" id="status-msg">🔄 Conectando ao Supabase...</div>
 
-    <!-- Filtro de Setor + Campo de Pesquisa -->
+    <!-- Filtro de Setores (Múltipla Seleção) + Campo de Pesquisa -->
     <div class="search-container">
-        <select id="sector-select" class="sector-select" disabled onchange="performSearch()">
-            <option value="">Todos os Setores</option>
-        </select>
+        <div class="multi-select-container">
+            <button type="button" class="select-btn" id="sector-btn" onclick="toggleDropdown()" disabled>
+                Selecionar Setores
+            </button>
+            <div class="dropdown-content" id="sector-dropdown">
+                <!-- Opções de setores serão injetadas via Javascript -->
+            </div>
+        </div>
 
         <div class="search-box-wrapper">
             <input type="text" id="search-input" class="search-input" placeholder="Carregando dados..." disabled autocomplete="off" autocapitalize="none">
@@ -397,13 +458,119 @@
 
 <script>
     let inventoryData = [];
-    
+
+    // Mapeamento Oficial de Setores e seus Trilhos correspondentes
+    const SETORES_TRILHOS = {
+        "COLADEIRA": [
+            "C1201", "C1202", "C1203", "C1206", "C1207", "C1208", "C1209", "C1210", "C1211", "C1212", "C1213", "C1214", "C1215", "C1216", "C1320",
+            "C1CA001", "C1CA002", "C1CA003", "C1CA004", "C1CA005", "C1CA006", "C1CA007", "C1CA008", "C1CA009", "C1CA010", "C1CA011", "C1CA012", "C1CA013", "C1CA014", "C1CA015", "C1CA016", "C1CA017",
+            "C1CB001", "C1CB002", "C1CB003", "C1CB004", "C1CB005", "C1CB006", "C1CB007", "C1CB008", "C1CB009", "C1CB010", "C1CB011", "C1CB012", "C1CB013", "C1CB014", "C1CB015",
+            "C1CC002", "C1CC003", "C1CC004", "C1CC005", "C1CC006", "C1CC007", "C1CC008", "C1CC009", "C1CC010", "C1CC011", "C1CC012", "C1CC013", "C1CC014", "C1CC015", "C1CC016",
+            "C1CD001", "C1CD002", "C1CD003", "C1CD004", "C1CD005", "C1CD006", "C1CD007", "C1CD008", "C1CD009", "C1CD010", "C1CD011", "C1CD012",
+            "C1CE001", "C1CE002", "C1CE003", "C1CE004", "C1CE005", "C1CE006", "C1CE007", "C1CE008", "C1CE009", "C1CE010", "C1CE011", "C1CE012", "C1CE013", "C1CE014", "C1CE015", "C1CE016",
+            "C1CF001", "C1CF002", "C1CF003", "C1CF004", "C1CF005", "C1CF006", "C1CF007", "C1CF008", "C1CF009", "C1CF010", "C1CF011", "C1CF012", "C1CF013", "C1CF014", "C1CF015", "C1CF016",
+            "C1CG001", "C1CG002", "C1CG003", "C1CG004", "C1CG005", "C1CG006", "C1CG007", "C1CG008", "C1CG009", "C1CG010", "C1CG011", "C1CG012", "C1CG013", "C1CG014", "C1CG015", "C1CG016",
+            "C1CH001", "C1CH002", "C1CH003", "C1CH004", "C1CH005", "C1CH006", "C1CH007", "C1CH008", "C1CH009", "C1CH010", "C1CH011", "C1CH012", "C1CH013", "C1CH014", "C1CH015", "C1CH016", "C1CH017",
+            "C1CI001", "C1CI002", "C1CI003", "C1CI004", "C1CI005", "C1CI006", "C1CI007", "C1CI008", "C1CI009", "C1CI010", "C1CI011", "C1CI012", "C1CI013", "C1CI014", "C1CI015", "C1CI016",
+            "C1CJ001", "C1CJ002", "C1CJ003", "C1CJ004", "C1CJ005", "C1CJ006", "C1CJ007", "C1CJ008", "C1CJ009", "C1CJ010", "C1CJ011", "C1CJ012", "C1CJ013", "C1CJ014", "C1CJ016",
+            "C1CL010", "C1CLP", "C1CLP1", "C1CLP2", "C1CLP3",
+            "C1E201", "C1E202", "C1E203", "C1E206", "C1E207", "C1E208", "C1E209", "C1E210", "C1E211", "C1E212", "C1E213", "C1E214", "C1E215", "C1E216", "C1E320"
+        ],
+        "CORTADEIRAS": [
+            "C11001", "C11002", "C11003", "C11004",
+            "C1CORT1", "C1CORT2", "C1CORT3", "C1CORT4", "C1CORT5", "C1CORT6", "C1CORT7", "C1CORT8", "C1CORT9", "C1CORT10", "C1CORT11",
+            "C1E1001", "C1E1002", "C1E1003", "C1E1004"
+        ],
+        "EMBALAGEM": [
+            "C1801", "C1802", "C1803", "C1804", "C1805", "C1806", "C1807", "C1835", "C1900", "C1910",
+            "C1EA001", "C1EA002", "C1EA003", "C1EA004", "C1EA005", "C1EA006", "C1EA007", "C1EA008", "C1EA009", "C1EA010",
+            "C1EB001", "C1EB002", "C1EB003", "C1EB004", "C1EB005", "C1EB006", "C1EB007", "C1EB008", "C1EB009", "C1EB010", "C1EB011", "C1EB012", "C1EB013", "C1EB014", "C1EB015", "C1EB016",
+            "C1EC003", "C1EC004", "C1EC005", "C1EC006", "C1EC007", "C1EC008", "C1EC009", "C1EC010", "C1EC011", "C1EC012", "C1EC013",
+            "C1ED001", "C1ED002", "C1ED003", "C1ED004", "C1ED005", "C1ED006", "C1ED007", "C1ED008", "C1ED009", "C1ED010", "C1ED011", "C1ED012", "C1ED013",
+            "C1EE001", "C1EE002", "C1EE003", "C1EE004", "C1EE005", "C1EE006", "C1EE007", "C1EE008", "C1EE009", "C1EE010", "C1EE011", "C1EE012", "C1EE013", "C1EE014", "C1EE015", "C1EE016",
+            "C1EF001", "C1EF002", "C1EF003", "C1EF004", "C1EF005", "C1EF006", "C1EF007", "C1EF008", "C1EF009", "C1EF010", "C1EF011", "C1EF012", "C1EF013", "C1EF014", "C1EF015", "C1EF016",
+            "C1EG001", "C1EG002", "C1EG003", "C1EG004", "C1EG005", "C1EG006", "C1EG007", "C1EG008", "C1EG009", "C1EG010", "C1EG011", "C1EG012", "C1EG013", "C1EG014", "C1EG015", "C1EG016",
+            "C1FB001", "C1FB002", "C1FB003", "C1FB004", "C1FB005", "C1FB006", "C1FB007", "C1FB008", "C1FB009", "C1FB010",
+            "C1SLD01", "C1SLD02", "C1SLD03", "C1SLD04", "C1SLD05", "C1SLD06", "C1SLD07", "C1SLD08", "C1SLD09", "C1SLD010", "C1SLD10", "C1SLD11", "C1SLD12", "C1SLD13", "C1SLD14", "C1SLD15", "C1SLD16", "C1SLD17", "C1SLD18", "C1SLD19", "C1SLD20",
+            "C1SOB001", "C1SOB002", "C1SOB003", "C1SOB004", "C1SOB005", "C1SOB006",
+            "C1E801", "C1E802", "C1E803", "C1E804", "C1E805", "C1E806", "C1E807", "C1E835", "C1E900",
+            "Q1QUALIEMB1"
+        ],
+        "FURADEIRA": [
+            "C1403", "C1407", "C1413", "C1420", "C1421", "C1422", "C1423", "C1424", "C1425", "C1427", "C1428", "C1429", "C1453", "C1456", "C1461", "C1462", "C1501", "C1502", "C1523",
+            "C1FB011", "C1FB012", "C1FB013", "C1FB014",
+            "C1FC001", "C1FC002", "C1FC003", "C1FC004", "C1FC005", "C1FC006", "C1FC007", "C1FC008", "C1FC009", "C1FC010", "C1FC011", "C1FC012", "C1FC013", "C1FC014",
+            "C1FD001", "C1FD002", "C1FD003", "C1FD004", "C1FD005", "C1FD006", "C1FD007", "C1FD008", "C1FD009", "C1FD010", "C1FD011", "C1FD012", "C1FD013", "C1FD014",
+            "C1FE001", "C1FE002", "C1FE003", "C1FE004", "C1FE005", "C1FE006", "C1FE007", "C1FE008", "C1FE009", "C1FE010", "C1FE011", "C1FE012", "C1FE013", "C1FE014",
+            "C1FLP1", "C1FLP2", "C1FREJETIO",
+            "C1E403", "C1E407", "C1E413", "C1E420", "C1E421", "C1E422", "C1E423", "C1E424", "C1E425", "C1E427", "C1E428", "C1E429", "C1E453", "C1E456", "C1E461", "C1E462", "C1E501", "C1E502", "C1E523",
+            "Q1QUALIFUR1", "Q1QUALIFUR2"
+        ],
+        "MANUAIS I": [
+            "C1217", "C1218", "C1301", "C1310", "C1311", "C1312", "C1313", "C1603", "C1604", "C1605", "C1606", "C1607", "C1610",
+            "C1FA001", "C1FA002", "C1FA003", "C1FA004", "C1FA005", "C1FA006", "C1FA007", "C1FA008",
+            "C1MA001", "C1MA002", "C1MA003", "C1MA004", "C1MA005", "C1MA006", "C1MA007", "C1MA008", "C1MA009", "C1MA010", "C1MA011", "C1MA012", "C1MA013", "C1MA014", "C1MA015", "C1MA016", "C1MA017", "C1MA018", "C1MA019", "C1MA020", "C1MA021", "C1MA022",
+            "C1MALP2",
+            "C1E217", "C1E218", "C1E301", "C1E310", "C1E311", "C1E312", "C1E313", "C1E603", "C1E604", "C1E605", "C1E606", "C1E607", "C1E610"
+        ],
+        "MONTAGEM": [
+            "C1831", "C1832", "C1833", "C1840",
+            "C1MON01", "C1MON02", "C1MON831", "C1MON832", "C1MON833", "C1MON840",
+            "C1E831", "C1E832", "C1E833", "C1E840"
+        ],
+        "PINTURA": [
+            "C1701", "C1703", "C1705", "C1706", "C1707", "C1708", "C1709", "C1710", "C1712",
+            "C1P011", "C1PIN",
+            "C1PF001", "C1PF002", "C1PF003", "C1PF004", "C1PF005", "C1PF006", "C1PF007", "C1PF008", "C1PF009", "C1PF010", "C1PF011", "C1PF012", "C1PF013", "C1PF014",
+            "C1PG001", "C1PG002", "C1PG003", "C1PG004", "C1PG005", "C1PG006", "C1PG007", "C1PG008", "C1PG009", "C1PG010", "C1PG011", "C1PG012", "C1PG013", "C1PG014",
+            "C1PH001", "C1PH002", "C1PH003", "C1PH004", "C1PH005", "C1PH006", "C1PH007", "C1PH008", "C1PH009", "C1PH010", "C1PH011", "C1PH012", "C1PH013", "C1PH014",
+            "C1E701", "C1E703", "C1E705", "C1E706", "C1E707", "C1E708", "C1E709", "C1E710", "C1E712",
+            "Q1QUALIPIN1", "Q1QUALIPIN2"
+        ],
+        "SERRA DE PAINEL": [
+            "C1101", "C1102", "C1103", "C1104", "C1105", "C1106", "C1107", "C1108", "C1109", "C1110",
+            "C1SB001", "C1SB002", "C1SB003", "C1SB004", "C1SB005", "C1SB006", "C1SB007", "C1SB008", "C1SB009", "C1SB010", "C1SB011", "C1SB012", "C1SB014",
+            "C1SC001", "C1SC002", "C1SC003", "C1SC004", "C1SC005", "C1SC006", "C1SC007", "C1SC008", "C1SC009",
+            "C1SD001", "C1SD002", "C1SD003", "C1SD004", "C1SD005", "C1SD006", "C1SD007", "C1SD008", "C1SD009", "C1SD010",
+            "C1SE001", "C1SE002", "C1SE003", "C1SE004", "C1SE005", "C1SE006", "C1SE007", "C1SE008", "C1SE009", "C1SE010", "C1SE011", "C1SE012", "C1SE013", "C1SE014",
+            "C1SF001", "C1SF002", "C1SF003", "C1SF004", "C1SF005", "C1SF006", "C1SF007", "C1SF008", "C1SF009",
+            "C1SG001", "C1SG002", "C1SG003", "C1SG004", "C1SG005", "C1SG006", "C1SG007", "C1SG008", "C1SG009", "C1SG010",
+            "C1SH001", "C1SH002", "C1SH003", "C1SH004", "C1SH005", "C1SH006", "C1SH007", "C1SH008", "C1SH009", "C1SH010", "C1SH011", "C1SH012",
+            "C1SI001", "C1SI002", "C1SI003", "C1SI004", "C1SI005", "C1SI006", "C1SI007", "C1SI008", "C1SI009",
+            "C1SM005", "C1SREJEITO",
+            "C1E101", "C1E102", "C1E103", "C1E104", "C1E105", "C1E106", "C1E107", "C1E108", "C1E109", "C1E110",
+            "Q1QUALISEC1", "Q1QUALISEC2"
+        ],
+        "TSI": [
+            "C1114", "C1140", "C1142", "C1143", "C1144", "C1205", "C1302", "C1332", "C1414", "C1426", "C1481", "C1482", "C1483", "C1484", "C1503", "C1505", "C1507", "C1608", "C1614", "C1615", "C1621",
+            "C1SJ001", "C1SJ002", "C1SJ003", "C1SJ004", "C1SJ005", "C1SJ007", "C1SJ008",
+            "C1TSI001", "C1TSI002", "C1TSI003", "C1TSI004", "C1TSI005", "C1TSI006", "C1TSI007", "C1TSI008", "C1TSI009", "C1TSI010", "C1TSI011", "C1TSI012", "C1TSI013", "C1TSI014", "C1TSI015",
+            "C1TSIC001", "C1TSIC002", "C1TSIC003", "C1TSIC004", "C1TSIC005", "C1TSIC006", "C1TSIC007", "C1TSIC008", "C1TSIC009", "C1TSIC010", "C1TSIC011",
+            "C1TSIS001", "C1TSIS002", "C1TSIS003", "C1TSIS004", "C1TSIS005", "C1TSIS006", "C1TSIS007", "C1TSIS008", "C1TSIS009", "C1TSIS011", "C1TSIS012", "C1TSIS013", "C1TSIS014", "C1TSIS015", "C1TSIS016", "C1TSIS017", "C1TSIS018",
+            "PTSI",
+            "C1E114", "C1E140", "C1E142", "C1E143", "C1E144", "C1E205", "C1E302", "C1E332", "C1E414", "C1E426", "C1E481", "C1E482", "C1E483", "C1E484", "C1E503", "C1E505", "C1E507", "C1E608", "C1E614", "C1E615", "C1E621", "C1E843"
+        ]
+    };
+
     // Credenciais do Supabase
     const SUPABASE_URL = "https://qqxunufyleqwicgojlpe.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHVudWZ5bGVxd2ljZ29qbHBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDUyMzAsImV4cCI6MjEwMzM4MTIzMH0.EW_5ct0NIBmHZl76A3-gZZ_Qw6mNLZsoh_iFC7Ar7EQ";
 
     // Inicialização do Cliente Supabase
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Identifica a qual setor um determinado endereço/trilho pertence
+    function obterSetorDoTrilho(endereco) {
+        if (!endereco) return 'Outros';
+        const enderecoUpper = String(endereco).trim().toUpperCase();
+        
+        for (const [setor, trilhos] of Object.entries(SETORES_TRILHOS)) {
+            if (trilhos.includes(enderecoUpper)) {
+                return setor;
+            }
+        }
+        return 'Outros';
+    }
 
     // Busca os dados no Supabase usando o SDK oficial
     async function carregarEstoqueDoSupabase() {
@@ -414,18 +581,14 @@
 
             if (error) throw error;
 
-            // Mapeia os dados do Supabase
+            // Mapeia os dados do Supabase relacionando o endereço aos setores
             inventoryData = dadosBrutos.map(item => {
-                // Tenta mapear o setor ou extrair os primeiros caracteres do endereço caso não exista campo "setor" dedicado
-                let setorValor = item.setor || item.setor_codigo || item.area || '';
-                if (!setorValor && item.endereco) {
-                    // Extrai a primeira letra/parte do endereço como setor (ex: "A-01-02" -> "Setor A")
-                    setorValor = item.endereco.split('-')[0].trim();
-                }
+                const end = item.endereco || '-';
+                const setorIdentificado = item.setor || item.setor_codigo || item.area || obterSetorDoTrilho(end);
 
                 return {
-                    "Setor": setorValor || 'Geral',
-                    "Endereço": item.endereco || '-',
+                    "Setor": setorIdentificado,
+                    "Endereço": end,
                     "Código": item.produto_codigo || '-',
                     "Descrição": item.produto_desc || '-',
                     "Quantidade": item.quantidade ?? 0,
@@ -446,20 +609,69 @@
         }
     }
 
-    // Preenche o menu dropdown de setores dinamicamente
+    // Preenche a lista de setores com checkboxes
     function populareFiltroSetores() {
-        const sectorSelect = document.getElementById('sector-select');
-        const setores = [...new Set(inventoryData.map(item => item["Setor"]))].sort();
+        const dropdown = document.getElementById('sector-dropdown');
+        dropdown.innerHTML = '';
 
-        sectorSelect.innerHTML = '<option value="">Todos os Setores</option>';
-        setores.forEach(setor => {
+        // Prioriza as categorias pré-definidas na tabela e acrescenta outras se houver
+        const setoresMapeados = Object.keys(SETORES_TRILHOS);
+        const setoresPresentes = [...new Set(inventoryData.map(item => item["Setor"]))];
+        const todosSetores = [...new Set([...setoresMapeados, ...setoresPresentes])].sort();
+
+        todosSetores.forEach(setor => {
             if (setor) {
-                const option = document.createElement('option');
-                option.value = setor;
-                option.textContent = `Setor: ${setor}`;
-                sectorSelect.appendChild(option);
+                const label = document.createElement('label');
+                label.className = 'dropdown-option';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = setor;
+                checkbox.onchange = onSectorChange;
+
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(setor));
+                dropdown.appendChild(label);
             }
         });
+    }
+
+    function toggleDropdown() {
+        const dropdown = document.getElementById('sector-dropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    // Fecha o dropdown de setores se clicar fora dele
+    window.onclick = function(event) {
+        if (!event.target.matches('.select-btn') && !event.target.closest('.dropdown-content')) {
+            const dropdowns = document.getElementsByClassName("dropdown-content");
+            for (let i = 0; i < dropdowns.length; i++) {
+                const openDropdown = dropdowns[i];
+                if (openDropdown.classList.contains('show')) {
+                    openDropdown.classList.remove('show');
+                }
+            }
+        }
+    }
+
+    function getSelectedSectors() {
+        const checkboxes = document.querySelectorAll('#sector-dropdown input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    function onSectorChange() {
+        const selected = getSelectedSectors();
+        const btn = document.getElementById('sector-btn');
+        
+        if (selected.length === 0) {
+            btn.textContent = 'Todos os Setores';
+        } else if (selected.length === 1) {
+            btn.textContent = selected[0];
+        } else {
+            btn.textContent = `${selected.length} Setores selecionados`;
+        }
+        
+        performSearch();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -470,10 +682,10 @@
 
     function enableSearch() {
         const searchInput = document.getElementById('search-input');
-        const sectorSelect = document.getElementById('sector-select');
+        const sectorBtn = document.getElementById('sector-btn');
         
         searchInput.disabled = false;
-        sectorSelect.disabled = false;
+        sectorBtn.disabled = false;
         searchInput.placeholder = "Digite o código, descrição ou endereço...";
     }
 
@@ -514,20 +726,36 @@
 
     function performSearch() {
         const query = searchInput.value.trim().toLowerCase();
-        const selectedSector = document.getElementById('sector-select').value;
+        const selectedSectors = getSelectedSectors();
         const resultsDiv = document.getElementById('results');
         
-        // Se nem um filtro nem uma palavra de busca forem selecionados, limpa a exibição
-        if (query === "" && selectedSector === "") {
+        // Se nem um setor for selecionado e nenhuma palavra de busca for digitada, limpa a exibição
+        if (query === "" && selectedSectors.length === 0) {
             resultsDiv.innerHTML = "";
             return;
         }
 
+        // Obtém a lista completa de todos os trilhos associados aos setores marcados
+        let trilhosValidos = [];
+        selectedSectors.forEach(setor => {
+            if (SETORES_TRILHOS[setor]) {
+                trilhosValidos = trilhosValidos.concat(SETORES_TRILHOS[setor]);
+            }
+        });
+
         const filtered = inventoryData.filter(row => {
-            // Filtro por setor
-            const matchesSector = selectedSector === "" || String(row["Setor"]).toLowerCase() === selectedSector.toLowerCase();
+            const enderecoRow = String(row["Endereço"]).trim().toUpperCase();
+            const setorRow = row["Setor"];
+
+            // 1. Filtro por Setor/Trilho (Permite múltipla seleção)
+            let matchesSector = true;
+            if (selectedSectors.length > 0) {
+                const pertenceAoTrilho = trilhosValidos.includes(enderecoRow);
+                const pertenceAoSetor = selectedSectors.includes(setorRow);
+                matchesSector = pertenceAoTrilho || pertenceAoSetor;
+            }
             
-            // Filtro por texto digitado
+            // 2. Filtro por texto digitado
             const matchesQuery = query === "" || Object.values(row).some(val => 
                 String(val).toLowerCase().includes(query)
             );
