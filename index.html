@@ -93,7 +93,7 @@
             font-weight: 500;
         }
 
-        /* Busca */
+        /* Busca e Filtro de Setor */
         .search-container {
             position: sticky;
             top: 0;
@@ -101,12 +101,42 @@
             padding-top: 4px;
             padding-bottom: 12px;
             z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        @media (min-width: 640px) {
+            .search-container {
+                flex-direction: row;
+            }
+        }
+
+        .sector-select {
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background-color: #f8fafc;
+            color: var(--text-main);
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            min-width: 180px;
+            transition: all 0.2s;
+        }
+
+        .sector-select:focus {
+            background-color: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
         }
 
         .search-box-wrapper {
             position: relative;
             display: flex;
             align-items: center;
+            flex: 1;
         }
 
         .search-input {
@@ -349,8 +379,12 @@
     <!-- Status da Sincronização -->
     <div class="status" id="status-msg">🔄 Conectando ao Supabase...</div>
 
-    <!-- Campo de Pesquisa -->
+    <!-- Filtro de Setor + Campo de Pesquisa -->
     <div class="search-container">
+        <select id="sector-select" class="sector-select" disabled onchange="performSearch()">
+            <option value="">Todos os Setores</option>
+        </select>
+
         <div class="search-box-wrapper">
             <input type="text" id="search-input" class="search-input" placeholder="Carregando dados..." disabled autocomplete="off" autocapitalize="none">
             <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
@@ -380,14 +414,26 @@
 
             if (error) throw error;
 
-            // Mapeia os dados do Supabase para exibir os rótulos amigáveis na tela
-            inventoryData = dadosBrutos.map(item => ({
-                "Endereço": item.endereco || '-',
-                "Código": item.produto_codigo || '-',
-                "Descrição": item.produto_desc || '-',
-                "Quantidade": item.quantidade ?? 0,
-                "MovUn": item.movun_code || '-'
-            }));
+            // Mapeia os dados do Supabase
+            inventoryData = dadosBrutos.map(item => {
+                // Tenta mapear o setor ou extrair os primeiros caracteres do endereço caso não exista campo "setor" dedicado
+                let setorValor = item.setor || item.setor_codigo || item.area || '';
+                if (!setorValor && item.endereco) {
+                    // Extrai a primeira letra/parte do endereço como setor (ex: "A-01-02" -> "Setor A")
+                    setorValor = item.endereco.split('-')[0].trim();
+                }
+
+                return {
+                    "Setor": setorValor || 'Geral',
+                    "Endereço": item.endereco || '-',
+                    "Código": item.produto_codigo || '-',
+                    "Descrição": item.produto_desc || '-',
+                    "Quantidade": item.quantidade ?? 0,
+                    "MovUn": item.movun_code || '-'
+                };
+            });
+
+            populareFiltroSetores();
 
             const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             showStatus(`✓ Base ativa: <strong>Supabase (Nuvem)</strong> às ${agora} (${inventoryData.length} itens)`, 'success');
@@ -400,6 +446,22 @@
         }
     }
 
+    // Preenche o menu dropdown de setores dinamicamente
+    function populareFiltroSetores() {
+        const sectorSelect = document.getElementById('sector-select');
+        const setores = [...new Set(inventoryData.map(item => item["Setor"]))].sort();
+
+        sectorSelect.innerHTML = '<option value="">Todos os Setores</option>';
+        setores.forEach(setor => {
+            if (setor) {
+                const option = document.createElement('option');
+                option.value = setor;
+                option.textContent = `Setor: ${setor}`;
+                sectorSelect.appendChild(option);
+            }
+        });
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         carregarEstoqueDoSupabase();
         // Atualiza a tela sozinho a cada 2 minutos
@@ -408,7 +470,10 @@
 
     function enableSearch() {
         const searchInput = document.getElementById('search-input');
+        const sectorSelect = document.getElementById('sector-select');
+        
         searchInput.disabled = false;
+        sectorSelect.disabled = false;
         searchInput.placeholder = "Digite o código, descrição ou endereço...";
     }
 
@@ -449,21 +514,29 @@
 
     function performSearch() {
         const query = searchInput.value.trim().toLowerCase();
+        const selectedSector = document.getElementById('sector-select').value;
         const resultsDiv = document.getElementById('results');
         
-        if (query === "") {
+        // Se nem um filtro nem uma palavra de busca forem selecionados, limpa a exibição
+        if (query === "" && selectedSector === "") {
             resultsDiv.innerHTML = "";
             return;
         }
 
         const filtered = inventoryData.filter(row => {
-            return Object.values(row).some(val => 
+            // Filtro por setor
+            const matchesSector = selectedSector === "" || String(row["Setor"]).toLowerCase() === selectedSector.toLowerCase();
+            
+            // Filtro por texto digitado
+            const matchesQuery = query === "" || Object.values(row).some(val => 
                 String(val).toLowerCase().includes(query)
             );
+
+            return matchesSector && matchesQuery;
         });
 
         if (filtered.length === 0) {
-            resultsDiv.innerHTML = `<div class="no-result">Nenhum registro encontrado para "<strong>${searchInput.value}</strong>".</div>`;
+            resultsDiv.innerHTML = `<div class="no-result">Nenhum registro encontrado para os filtros selecionados.</div>`;
             return;
         }
 
