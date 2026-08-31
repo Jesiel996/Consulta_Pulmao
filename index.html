@@ -1,554 +1,345 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Consulta de Estoque</title>
-    <style>
-        :root {
-            /* Cores Gerais Modernas */
-            --primary: #334155;
-            --primary-light: #f8fafc;
-            --accent: #3b82f6;
-            --bg-body: #f1f5f9;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            
-            --success-bg: #f0fdf4;
-            --success-text: #166534;
-            --success-border: #bbf7d0;
-            --highlight: #fef08a;
-
-            /* Cores Suaves/Pastel para Comparação */
-            --border-min: #fca5a5;  /* Rosa/Vermelho bem suave */
-            --bg-min: #fef2f2;      /* Fundo avermelhado leve */
-            --text-min: #991b1b;
-            
-            --border-max: #86efac;  /* Verde pastel suave */
-            --bg-max: #f0fdf4;      /* Fundo esverdeado leve */
-            --text-max: #166534;
-        }
-
-        * {
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            margin: 0;
-            padding: 12px;
-            padding-top: max(12px, env(safe-area-inset-top));
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-            padding-left: max(12px, env(safe-area-inset-left));
-            padding-right: max(12px, env(safe-area-inset-right));
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-        }
-
-        .container {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-            width: 100%;
-            max-width: 950px;
-        }
-
-        .header-title {
-            font-size: 1.35rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin: 0 0 16px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-        }
-
-        /* Status */
-        .status {
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 0.88rem;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            word-break: break-word;
-            background: var(--success-bg);
-            color: var(--success-text);
-            border: 1px solid var(--success-border);
-            font-weight: 500;
-        }
-
-        /* Busca */
-        .search-container {
-            position: sticky;
-            top: 0;
-            background: var(--card-bg);
-            padding-top: 4px;
-            padding-bottom: 12px;
-            z-index: 10;
-        }
-
-        .search-box-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 12px 16px;
-            padding-right: 40px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            font-size: 1rem;
-            background-color: #f8fafc;
-            outline: none;
-            transition: all 0.2s;
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .search-input:focus {
-            background-color: #ffffff;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-        }
-
-        .clear-btn {
-            position: absolute;
-            right: 12px;
-            background: #cbd5e1;
-            border: none;
-            color: white;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .clear-btn:hover { background: #94a3b8; }
-
-        .results-container { margin-top: 8px; }
-
-        /* Legenda */
-        .legend-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            flex-wrap: wrap;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: #f8fafc;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-        }
-
-        .legend-color {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .legend-min { background: var(--border-min); }
-        .legend-max { background: var(--border-max); }
-
-        /* Cards Mobile */
-        .card-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .item-card {
-            background: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 14px;
-            transition: all 0.2s;
-        }
-
-        .item-card.is-min {
-            border: 1px solid var(--border-min);
-            background-color: var(--bg-min);
-        }
-
-        .item-card.is-max {
-            border: 1px solid var(--border-max);
-            background-color: var(--bg-max);
-        }
-
-        .card-details-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .detail-item {
-            display: flex;
-            flex-direction: column;
-            border-bottom: 1px dashed #e2e8f0;
-            padding-bottom: 6px;
-        }
-
-        .detail-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .detail-label {
-            color: var(--text-muted);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .detail-value {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-main);
-            margin-top: 2px;
-            word-break: break-word;
-        }
-
-        /* Tabela Desktop */
-        .table-wrapper {
-            display: none;
-            overflow-x: auto;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-        }
-
-        th {
-            background-color: #f8fafc;
-            color: var(--text-muted);
-            font-weight: 700;
-            text-align: left;
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border-color);
-            white-space: nowrap;
-            text-transform: uppercase;
-            font-size: 0.72rem;
-            letter-spacing: 0.5px;
-        }
-
-        td {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-main);
-            font-weight: 500;
-        }
-
-        tr:last-child td { border-bottom: none; }
-
-        tr.is-min {
-            background-color: var(--bg-min) !important;
-        }
-
-        tr.is-min td:first-child {
-            border-left: 3px solid var(--border-min);
-        }
-
-        tr.is-max {
-            background-color: var(--bg-max) !important;
-        }
-
-        tr.is-max td:first-child {
-            border-left: 3px solid var(--border-max);
-        }
-
-        .highlight-text {
-            background-color: var(--highlight);
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-weight: 700;
-        }
-
-        .badge-qty {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-        }
-
-        .is-min .badge-qty {
-            color: var(--text-min);
-            background: rgba(254, 202, 202, 0.4);
-        }
-
-        .is-max .badge-qty {
-            color: var(--text-max);
-            background: rgba(187, 247, 208, 0.4);
-        }
-
-        .no-result {
-            text-align: center;
-            padding: 30px 15px;
-            color: var(--text-muted);
-            font-size: 0.92rem;
-        }
-
-        .count-badge {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: #f1f5f9;
-            padding: 4px 10px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        @media (min-width: 640px) {
-            .card-list { display: none; }
-            .table-wrapper { display: block; }
-            .container { padding: 24px; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Consulta de Estoque Pulmão</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    .filtros { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+    .campo-filtro { display: flex; flex-direction: column; gap: 5px; }
+    input, select { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #2c3e50; color: white; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    .badge-setor { background: #e0e0e0; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header-title">
-        📦 Consulta de Estoque
+  <h2>Estoque Pulmão — Consulta por Setor e Trilho</h2>
+
+  <!-- Painel de Filtros -->
+  <div class="filtros">
+    <div class="campo-filtro">
+      <label for="selectSetor"><strong>Filtrar por Setor:</strong></label>
+      <select id="selectSetor">
+        <option value="">-- Todos os Setores --</option>
+        <option value="COLADEIRA">COLADEIRA</option>
+        <option value="CORTADEIRAS">CORTADEIRAS</option>
+        <option value="EMBALAGEM">EMBALAGEM</option>
+        <option value="FURADEIRA">FURADEIRA</option>
+        <option value="MANUAIS I">MANUAIS I</option>
+        <option value="MONTAGEM">MONTAGEM</option>
+        <option value="PINTURA">PINTURA</option>
+        <option value="SECCIONADORA">SECCIONADORA</option>
+        <option value="TSI">TSI</option>
+      </select>
     </div>
 
-    <!-- Status da Sincronização -->
-    <div class="status" id="status-msg">🔄 Conectando ao Supabase...</div>
-
-    <!-- Campo de Pesquisa -->
-    <div class="search-container">
-        <div class="search-box-wrapper">
-            <input type="text" id="search-input" class="search-input" placeholder="Carregando dados..." disabled autocomplete="off" autocapitalize="none">
-            <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
-        </div>
+    <div class="campo-filtro">
+      <label for="inputBusca"><strong>Busca rápida (Trilho, Produto, etc.):</strong></label>
+      <input type="text" id="inputBusca" placeholder="Digite para filtrar...">
     </div>
+  </div>
 
-    <!-- Resultados -->
-    <div class="results-container" id="results"></div>
-</div>
+  <div id="status">Carregando dados...</div>
 
-<script>
-    let inventoryData = [];
-    
-    // Credenciais do Supabase
-    const SUPABASE_URL = "https://qqxunufyleqwicgojlpe.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHVudWZ5bGVxd2ljZ29qbHBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDUyMzAsImV4cCI6MjEwMzM4MTIzMH0.EW_5ct0NIBmHZl76A3-gZZ_Qw6mNLZsoh_iFC7Ar7EQ";
+  <!-- Tabela de Exibição -->
+  <table>
+    <thead>
+      <tr>
+        <th>Setor</th>
+        <th>Trilho / Local</th>
+        <th>Código Produto</th>
+        <th>Descrição</th>
+        <th>Quantidade</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaCorpo"></tbody>
+  </table>
 
-    // Busca os dados no Supabase
-    async function carregarEstoqueDoSupabase() {
-        try {
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/estoque_pulmao?select=*`, {
-                headers: {
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": `Bearer ${SUPABASE_KEY}`
-                }
-            });
+  <script>
+    // 1. Mapeamento completo dos Trilhos x Setores enviado por você
+    const MAPA_SETORES = {
+      "C1CA001":"COLADEIRA","C1CA002":"COLADEIRA","C1CA003":"COLADEIRA","C1EA001":"EMBALAGEM",
+      "C1EA002":"EMBALAGEM","C1FB011":"FURADEIRA","C1SB001":"SECCIONADORA","C1SB002":"SECCIONADORA",
+      "C1CA004":"COLADEIRA","C1CA005":"COLADEIRA","C1CA006":"COLADEIRA","C1EA003":"EMBALAGEM",
+      "C1EA004":"EMBALAGEM","C1FB012":"FURADEIRA","C1SB003":"SECCIONADORA","C1SB004":"SECCIONADORA",
+      "C1CA007":"COLADEIRA","C1CA008":"COLADEIRA","C1CA009":"COLADEIRA","C1EA005":"EMBALAGEM",
+      "C1EA006":"EMBALAGEM","C1FB013":"FURADEIRA","C1SB005":"SECCIONADORA","C1SB006":"SECCIONADORA",
+      "C1CA010":"COLADEIRA","C1CA011":"COLADEIRA","C1CA012":"COLADEIRA","C1EA007":"EMBALAGEM",
+      "C1EA008":"EMBALAGEM","C1FB014":"FURADEIRA","C1SB007":"SECCIONADORA","C1SB008":"SECCIONADORA",
+      "C1CA013":"COLADEIRA","C1CA014":"COLADEIRA","C1CA015":"COLADEIRA","C1EA009":"EMBALAGEM",
+      "C1EA010":"EMBALAGEM","C1FC001":"FURADEIRA","C1SB009":"SECCIONADORA","C1SB010":"SECCIONADORA",
+      "C1CA016":"COLADEIRA","C1CA017":"COLADEIRA","C1CB001":"COLADEIRA","C1EB001":"EMBALAGEM",
+      "C1EB002":"EMBALAGEM","C1FC002":"FURADEIRA","C1SB011":"SECCIONADORA","C1SB012":"SECCIONADORA",
+      "C1CB002":"COLADEIRA","C1CB003":"COLADEIRA","C1CB004":"COLADEIRA","C1EB003":"EMBALAGEM",
+      "C1EB004":"EMBALAGEM","C1FC003":"FURADEIRA","C1SB014":"SECCIONADORA","C1SC001":"SECCIONADORA",
+      "C1CB005":"COLADEIRA","C1CB006":"COLADEIRA","C1CB007":"COLADEIRA","C1EB005":"EMBALAGEM",
+      "C1EB006":"EMBALAGEM","C1FC004":"FURADEIRA","C1SC002":"SECCIONADORA","C1SC003":"SECCIONADORA",
+      "C1CB008":"COLADEIRA","C1CB009":"COLADEIRA","C1CB010":"COLADEIRA","C1EB007":"EMBALAGEM",
+      "C1EB008":"EMBALAGEM","C1FC005":"FURADEIRA","C1SC004":"SECCIONADORA","C1SC005":"SECCIONADORA",
+      "C1201":"COLADEIRA","C1E201":"COLADEIRA","C1CB011":"COLADEIRA","C1CB012":"COLADEIRA",
+      "C1CB013":"COLADEIRA","C1801":"EMBALAGEM","C1E801":"EMBALAGEM","C1EB009":"EMBALAGEM",
+      "C1EB010":"EMBALAGEM","C1403":"FURADEIRA","C1E403":"FURADEIRA","C1FC006":"FURADEIRA",
+      "C1217":"MANUAIS I","C1E217":"MANUAIS I","C1SC006":"SECCIONADORA","C1SC007":"SECCIONADORA",
+      "C1114":"TSI","C1E114":"TSI","C1SJ001":"TSI","C1202":"COLADEIRA",
+      "C1E202":"COLADEIRA","C1CB014":"COLADEIRA","C1CB015":"COLADEIRA","C1CC002":"COLADEIRA",
+      "C1802":"EMBALAGEM","C1E802":"EMBALAGEM","C1EB011":"EMBALAGEM","C1EB012":"EMBALAGEM",
+      "C1407":"FURADEIRA","C1E407":"FURADEIRA","C1FC007":"FURADEIRA","C1218":"MANUAIS I",
+      "C1E218":"MANUAIS I","C1SC008":"SECCIONADORA","C1SC009":"SECCIONADORA","C1140":"TSI",
+      "C1E140":"TSI","C1SJ002":"TSI","C1203":"COLADEIRA","C1E203":"COLADEIRA",
+      "C1CC003":"COLADEIRA","C1CC004":"COLADEIRA","C1CC005":"COLADEIRA","C1803":"EMBALAGEM",
+      "C1E803":"EMBALAGEM","C1EB013":"EMBALAGEM","C1EB014":"EMBALAGEM","C1413":"FURADEIRA",
+      "C1E413":"FURADEIRA","C1FC008":"FURADEIRA","C1301":"MANUAIS I","C1E301":"MANUAIS I",
+      "C1SD001":"SECCIONADORA","C1SD002":"SECCIONADORA","C1142":"TSI","C1E142":"TSI",
+      "C1SJ003":"TSI","C1206":"COLADEIRA","C1E206":"COLADEIRA","C1CC006":"COLADEIRA",
+      "C1CC007":"COLADEIRA","C1CC008":"COLADEIRA","C1804":"EMBALAGEM","C1E804":"EMBALAGEM",
+      "C1EB015":"EMBALAGEM","C1EB016":"EMBALAGEM","C1420":"FURADEIRA","C1E420":"FURADEIRA",
+      "C1FC009":"FURADEIRA","C1310":"MANUAIS I","C1E310":"MANUAIS I","C1SD003":"SECCIONADORA",
+      "C1SD004":"SECCIONADORA","C1143":"TSI","C1E143":"TSI","C1SJ004":"TSI",
+      "C1207":"COLADEIRA","C1E207":"COLADEIRA","C1CC009":"COLADEIRA","C1CC010":"COLADEIRA",
+      "C1805":"EMBALAGEM","C1E805":"EMBALAGEM","C1EC003":"EMBALAGEM","C1EC004":"EMBALAGEM",
+      "C1421":"FURADEIRA","C1E421":"FURADEIRA","C1FC010":"FURADEIRA","C1311":"MANUAIS I",
+      "C1E311":"MANUAIS I","C1SD005":"SECCIONADORA","C1SD006":"SECCIONADORA","C1144":"TSI",
+      "C1E144":"TSI","C1SJ005":"TSI","C1208":"COLADEIRA","C1E208":"COLADEIRA",
+      "C1CC011":"COLADEIRA","C1CC012":"COLADEIRA","C1806":"EMBALAGEM","C1E806":"EMBALAGEM",
+      "C1EC005":"EMBALAGEM","C1EC006":"EMBALAGEM","C1422":"FURADEIRA","C1E422":"FURADEIRA",
+      "C1FC011":"FURADEIRA","C1312":"MANUAIS I","C1E312":"MANUAIS I","C1SD007":"SECCIONADORA",
+      "C1SD008":"SECCIONADORA","C1205":"TSI","C1E205":"TSI","C1SJ007":"TSI",
+      "C1209":"COLADEIRA","C1E209":"COLADEIRA","C1CC013":"COLADEIRA","C1CC014":"COLADEIRA",
+      "C1807":"EMBALAGEM","C1E807":"EMBALAGEM","C1EC007":"EMBALAGEM","C1EC008":"EMBALAGEM",
+      "C1423":"FURADEIRA","C1E423":"FURADEIRA","C1FC012":"FURADEIRA","C1313":"MANUAIS I",
+      "C1E313":"MANUAIS I","C1701":"PINTURA","C1E701":"PINTURA","C1101":"SECCIONADORA",
+      "C1E101":"SECCIONADORA","C1SD009":"SECCIONADORA","C1SD010":"SECCIONADORA","C1302":"TSI",
+      "C1E302":"TSI","C1SJ008":"TSI","C1210":"COLADEIRA","C1E210":"COLADEIRA",
+      "C1CC015":"COLADEIRA","C1CC016":"COLADEIRA","C1835":"EMBALAGEM","C1E835":"EMBALAGEM",
+      "C1EC009":"EMBALAGEM","C1EC010":"EMBALAGEM","C1424":"FURADEIRA","C1E424":"FURADEIRA",
+      "C1FC013":"FURADEIRA","C1603":"MANUAIS I","C1E603":"MANUAIS I","C1703":"PINTURA",
+      "C1E703":"PINTURA","C1102":"SECCIONADORA","C1E102":"SECCIONADORA","C1SE001":"SECCIONADORA",
+      "C1SE002":"SECCIONADORA","C1332":"TSI","C1E332":"TSI","C1TSI001":"TSI",
+      "C1211":"COLADEIRA","C1E211":"COLADEIRA","C1CD001":"COLADEIRA","C1CD002":"COLADEIRA",
+      "C1900":"EMBALAGEM","C1E900":"EMBALAGEM","C1EC011":"EMBALAGEM","C1EC012":"EMBALAGEM",
+      "C1425":"FURADEIRA","C1E425":"FURADEIRA","C1FC014":"FURADEIRA","C1604":"MANUAIS I",
+      "C1E604":"MANUAIS I","C1705":"PINTURA","C1E705":"PINTURA","C1103":"SECCIONADORA",
+      "C1E103":"SECCIONADORA","C1SE003":"SECCIONADORA","C1414":"TSI","C1E414":"TSI",
+      "C1TSI002":"TSI","C1212":"COLADEIRA","C1E212":"COLADEIRA","C1CD003":"COLADEIRA",
+      "C1CD004":"COLADEIRA","C1910":"EMBALAGEM","C1EC013":"EMBALAGEM","C1ED001":"EMBALAGEM",
+      "C1427":"FURADEIRA","C1E427":"FURADEIRA","C1FD001":"FURADEIRA","C1605":"MANUAIS I",
+      "C1E605":"MANUAIS I","C1706":"PINTURA","C1E706":"PINTURA","C1104":"SECCIONADORA",
+      "C1E104":"SECCIONADORA","C1SE004":"SECCIONADORA","C1426":"TSI","C1E426":"TSI",
+      "C1TSI003":"TSI","C1213":"COLADEIRA","C1E213":"COLADEIRA","C1CD005":"COLADEIRA",
+      "C1CD006":"COLADEIRA","C1ED002":"EMBALAGEM","C1ED003":"EMBALAGEM","C1428":"FURADEIRA",
+      "C1E428":"FURADEIRA","C1FD002":"FURADEIRA","C1606":"MANUAIS I","C1E606":"MANUAIS I",
+      "C1707":"PINTURA","C1E707":"PINTURA","C1105":"SECCIONADORA","C1E105":"SECCIONADORA",
+      "C1SE005":"SECCIONADORA","C1481":"TSI","C1E481":"TSI","C1TSI004":"TSI",
+      "C1214":"COLADEIRA","C1E214":"COLADEIRA","C1CD007":"COLADEIRA","C1CD008":"COLADEIRA",
+      "C1ED004":"EMBALAGEM","C1ED005":"EMBALAGEM","C1429":"FURADEIRA","C1E429":"FURADEIRA",
+      "C1FD003":"FURADEIRA","C1607":"MANUAIS I","C1E607":"MANUAIS I","C1708":"PINTURA",
+      "C1E708":"PINTURA","C1106":"SECCIONADORA","C1E106":"SECCIONADORA","C1SE006":"SECCIONADORA",
+      "C1482":"TSI","C1E482":"TSI","C1TSI005":"TSI","C1215":"COLADEIRA",
+      "C1E215":"COLADEIRA","C1CD009":"COLADEIRA","C1CD010":"COLADEIRA","C1ED006":"EMBALAGEM",
+      "C1ED007":"EMBALAGEM","C1453":"FURADEIRA","C1E453":"FURADEIRA","C1FD004":"FURADEIRA",
+      "C1610":"MANUAIS I","C1E610":"MANUAIS I","C1709":"PINTURA","C1E709":"PINTURA",
+      "C1107":"SECCIONADORA","C1E107":"SECCIONADORA","C1SE007":"SECCIONADORA","C1483":"TSI",
+      "C1E483":"TSI","C1TSI006":"TSI","C1216":"COLADEIRA","C1E216":"COLADEIRA",
+      "C1CD011":"COLADEIRA","C1CD012":"COLADEIRA","C1ED008":"EMBALAGEM","C1ED009":"EMBALAGEM",
+      "C1456":"FURADEIRA","C1E456":"FURADEIRA","C1FD005":"FURADEIRA","C1710":"PINTURA",
+      "C1E710":"PINTURA","C1P011":"PINTURA","C1108":"SECCIONADORA","C1E108":"SECCIONADORA",
+      "C1SE008":"SECCIONADORA","C1484":"TSI","C1E484":"TSI","C1TSI007":"TSI",
+      "C1320":"COLADEIRA","C1E320":"COLADEIRA","C1CE001":"COLADEIRA","C1CE002":"COLADEIRA",
+      "C1ED010":"EMBALAGEM","C1ED011":"EMBALAGEM","C1461":"FURADEIRA","C1E461":"FURADEIRA",
+      "C1FD006":"FURADEIRA","C1712":"PINTURA","C1E712":"PINTURA","C1PF001":"PINTURA",
+      "C1109":"SECCIONADORA","C1E109":"SECCIONADORA","C1SE009":"SECCIONADORA","C1503":"TSI",
+      "C1E503":"TSI","C1TSI008":"TSI","C1CE003":"COLADEIRA","C1CE004":"COLADEIRA",
+      "C1ED012":"EMBALAGEM","C1ED013":"EMBALAGEM","C1462":"FURADEIRA","C1E462":"FURADEIRA",
+      "C1FD007":"FURADEIRA","C1PF002":"PINTURA","C1110":"SECCIONADORA","C1E110":"SECCIONADORA",
+      "C1SE010":"SECCIONADORA","C1505":"TSI","C1E505":"TSI","C1TSI009":"TSI",
+      "C1CE005":"COLADEIRA","C1CE006":"COLADEIRA","C1EE001":"EMBALAGEM","C1EE002":"EMBALAGEM",
+      "C1501":"FURADEIRA","C1E501":"FURADEIRA","C1FD008":"FURADEIRA","C1PF003":"PINTURA",
+      "C1SE011":"SECCIONADORA","C1507":"TSI","C1E507":"TSI","C1TSI010":"TSI",
+      "C1CE007":"COLADEIRA","C1CE008":"COLADEIRA","C1EE003":"EMBALAGEM","C1EE004":"EMBALAGEM",
+      "C1502":"FURADEIRA","C1E502":"FURADEIRA","C1FD009":"FURADEIRA","C1PF004":"PINTURA",
+      "C1SE012":"SECCIONADORA","C1608":"TSI","C1E608":"TSI","C1TSI011":"TSI",
+      "C1CE009":"COLADEIRA","C1CE010":"COLADEIRA","C1EE005":"EMBALAGEM","C1EE006":"EMBALAGEM",
+      "C1523":"FURADEIRA","C1E523":"FURADEIRA","C1FD010":"FURADEIRA","C1PF005":"PINTURA",
+      "C1SE013":"SECCIONADORA","C1614":"TSI","C1E614":"TSI","C1TSI012":"TSI",
+      "C1CE011":"COLADEIRA","C1CE012":"COLADEIRA","C1EE007":"EMBALAGEM","C1EE008":"EMBALAGEM",
+      "C1FD011":"FURADEIRA","C1PF006":"PINTURA","C1SE014":"SECCIONADORA","C1615":"TSI",
+      "C1E615":"TSI","C1TSI013":"TSI","C1CE013":"COLADEIRA","C1CE014":"COLADEIRA",
+      "C1EE009":"EMBALAGEM","C1EE010":"EMBALAGEM","C1FD012":"FURADEIRA","C1PF007":"PINTURA",
+      "C1SF001":"SECCIONADORA","C1621":"TSI","C1E621":"TSI","C1E843":"TSI",
+      "PTSI":"TSI","C1TSI014":"TSI","C1CE015":"COLADEIRA","C1CE016":"COLADEIRA",
+      "C1EE011":"EMBALAGEM","C1EE012":"EMBALAGEM","C1FD013":"FURADEIRA","C1PF008":"PINTURA",
+      "C1SF002":"SECCIONADORA","C1TSI015":"TSI","C1CF001":"COLADEIRA","C1CF002":"COLADEIRA",
+      "C1EE013":"EMBALAGEM","C1EE014":"EMBALAGEM","C1FD014":"FURADEIRA","C1FA001":"MANUAIS I",
+      "C1PF009":"PINTURA","C1SF003":"SECCIONADORA","C1TSIC001":"TSI","C1CF003":"COLADEIRA",
+      "C1CF004":"COLADEIRA","C1EE015":"EMBALAGEM","C1EE016":"EMBALAGEM","C1FE001":"FURADEIRA",
+      "C1FA002":"MANUAIS I","C1PF010":"PINTURA","C1SF004":"SECCIONADORA","C1TSIC002":"TSI",
+      "C1CF005":"COLADEIRA","C1CF006":"COLADEIRA","C1EF001":"EMBALAGEM","C1EF002":"EMBALAGEM",
+      "C1FE002":"FURADEIRA","C1FA003":"MANUAIS I","C1PF011":"PINTURA","C1SF005":"SECCIONADORA",
+      "C1TSIC003":"TSI","C1CF007":"COLADEIRA","C1CF008":"COLADEIRA","C1EF003":"EMBALAGEM",
+      "C1EF004":"EMBALAGEM","C1FE003":"FURADEIRA","C1FA004":"MANUAIS I","C1PF012":"PINTURA",
+      "C1SF006":"SECCIONADORA","C1TSIC004":"TSI","C1CF009":"COLADEIRA","C1CF010":"COLADEIRA",
+      "C1EF005":"EMBALAGEM","C1EF006":"EMBALAGEM","C1FE004":"FURADEIRA","C1FA005":"MANUAIS I",
+      "C1PF013":"PINTURA","C1SF007":"SECCIONADORA","C1TSIC005":"TSI","C1CF011":"COLADEIRA",
+      "C1CF012":"COLADEIRA","C1EF007":"EMBALAGEM","C1EF008":"EMBALAGEM","C1FE005":"FURADEIRA",
+      "C1FA006":"MANUAIS I","C1PF014":"PINTURA","C1SF008":"SECCIONADORA","C1TSIC006":"TSI",
+      "C1CF013":"COLADEIRA","C1CF014":"COLADEIRA","C1EF009":"EMBALAGEM","C1EF010":"EMBALAGEM",
+      "C1FE006":"FURADEIRA","C1FA007":"MANUAIS I","C1PG001":"PINTURA","C1SF009":"SECCIONADORA",
+      "C1TSIC007":"TSI","C1CF015":"COLADEIRA","C1CF016":"COLADEIRA","C1EF011":"EMBALAGEM",
+      "C1EF012":"EMBALAGEM","C1FE007":"FURADEIRA","C1FA008":"MANUAIS I","C1PG002":"PINTURA",
+      "C1SG001":"SECCIONADORA","C1TSIC008":"TSI","C1CG001":"COLADEIRA","C1CG002":"COLADEIRA",
+      "C1EF013":"EMBALAGEM","C1EF014":"EMBALAGEM","C1FE008":"FURADEIRA","C1MA001":"MANUAIS I",
+      "C1PG003":"PINTURA","C1SG002":"SECCIONADORA","C1TSIC009":"TSI","C1CG003":"COLADEIRA",
+      "C1CG004":"COLADEIRA","C1EF015":"EMBALAGEM","C1EF016":"EMBALAGEM","C1FE009":"FURADEIRA",
+      "C1MA002":"MANUAIS I","C1PG004":"PINTURA","C1SG003":"SECCIONADORA","C1TSIC010":"TSI",
+      "C1CG005":"COLADEIRA","C1CG006":"COLADEIRA","C1EG001":"EMBALAGEM","C1EG002":"EMBALAGEM",
+      "C1FE010":"FURADEIRA","C1MA003":"MANUAIS I","C1PG005":"PINTURA","C1SG004":"SECCIONADORA",
+      "C1TSIC011":"TSI","C1CG007":"COLADEIRA","C1CG008":"COLADEIRA","C1EG003":"EMBALAGEM",
+      "C1EG004":"EMBALAGEM","C1FE011":"FURADEIRA","C1MA004":"MANUAIS I","C1PG006":"PINTURA",
+      "C1SG005":"SECCIONADORA","C1TSIS001":"TSI","C1CG009":"COLADEIRA","C1CG010":"COLADEIRA",
+      "C1EG005":"EMBALAGEM","C1EG006":"EMBALAGEM","C1FE012":"FURADEIRA","C1MA005":"MANUAIS I",
+      "C1PG007":"PINTURA","C1SG006":"SECCIONADORA","C1TSIS002":"TSI","C1CG011":"COLADEIRA",
+      "C1CG012":"COLADEIRA","C1EG007":"EMBALAGEM","C1EG008":"EMBALAGEM","C1FE013":"FURADEIRA",
+      "C1MA006":"MANUAIS I","C1PG008":"PINTURA","C1SG007":"SECCIONADORA","C1TSIS003":"TSI",
+      "C1CG013":"COLADEIRA","C1CG014":"COLADEIRA","C1EG009":"EMBALAGEM","C1EG010":"EMBALAGEM",
+      "C1FE014":"FURADEIRA","C1MA007":"MANUAIS I","C1PG009":"PINTURA","C1SG008":"SECCIONADORA",
+      "C1TSIS004":"TSI","C1CG015":"COLADEIRA","C1CG016":"COLADEIRA","C1EG011":"EMBALAGEM",
+      "C1EG012":"EMBALAGEM","C1FLP1":"FURADEIRA","C1MA008":"MANUAIS I","C1PG010":"PINTURA",
+      "C1SG009":"SECCIONADORA","C1TSIS005":"TSI","C1CH001":"COLADEIRA","C1CH002":"COLADEIRA",
+      "C1EG013":"EMBALAGEM","C1EG014":"EMBALAGEM","C1FLP2":"FURADEIRA","C1MA009":"MANUAIS I",
+      "C1PG011":"PINTURA","C1SG010":"SECCIONADORA","C1TSIS006":"TSI","C1CH003":"COLADEIRA",
+      "C1CH004":"COLADEIRA","C1EG015":"EMBALAGEM","C1EG016":"EMBALAGEM","C1FREJETIO":"FURADEIRA",
+      "C1MA010":"MANUAIS I","C1831":"MONTAGEM","C1PG012":"PINTURA","C1SH001":"SECCIONADORA",
+      "C1TSIS007":"TSI","C1CH005":"COLADEIRA","C1CH006":"COLADEIRA","C1FB001":"EMBALAGEM",
+      "C1FB002":"EMBALAGEM","Q1QUALIFUR1":"FURADEIRA","C1MA011":"MANUAIS I","C1832":"MONTAGEM",
+      "C1PG013":"PINTURA","C1SH002":"SECCIONADORA","C1TSIS008":"TSI","C1CORT1":"CORTADEIRAS",
+      "C1FB003":"EMBALAGEM","C1FB004":"EMBALAGEM","Q1QUALIFUR2":"FURADEIRA","C1MA012":"MANUAIS I",
+      "C1833":"MONTAGEM","C1PG014":"PINTURA","C1SH003":"SECCIONADORA","C1TSIS009":"TSI",
+      "C1CH009":"COLADEIRA","C1CH010":"COLADEIRA","C1CORT10":"CORTADEIRAS","C1FB005":"EMBALAGEM",
+      "C1FB006":"EMBALAGEM","C1MA013":"MANUAIS I","C1840":"MONTAGEM","C1PH001":"PINTURA",
+      "C1SH004":"SECCIONADORA","C1TSIS011":"TSI","C1CH011":"COLADEIRA","C1CH012":"COLADEIRA",
+      "C1CORT11":"CORTADEIRAS","C1FB007":"EMBALAGEM","C1FB008":"EMBALAGEM","C1MA014":"MANUAIS I",
+      "C1E831":"MONTAGEM","C1PH002":"PINTURA","C1SH005":"SECCIONADORA","C1TSIS012":"TSI",
+      "C1CH013":"COLADEIRA","C1CH014":"COLADEIRA","C1CORT2":"CORTADEIRAS","C1FB009":"EMBALAGEM",
+      "C1FB010":"EMBALAGEM","C1MA015":"MANUAIS I","C1E832":"MONTAGEM","C1PH003":"PINTURA",
+      "C1SH006":"SECCIONADORA","C1TSIS013":"TSI","C1CH015":"COLADEIRA","C1CH016":"COLADEIRA",
+      "C1CORT3":"CORTADEIRAS","C1SLD01":"EMBALAGEM","C1SLD010":"EMBALAGEM","C1MA016":"MANUAIS I",
+      "C1E833":"MONTAGEM","C1PH004":"PINTURA","C1SH007":"SECCIONADORA","C1TSIS014":"TSI",
+      "C1CH017":"COLADEIRA","C1CI001":"COLADEIRA","C1CORT4":"CORTADEIRAS","C1SLD02":"EMBALAGEM",
+      "C1SLD03":"EMBALAGEM","C1MA017":"MANUAIS I","C1E840":"MONTAGEM","C1PH005":"PINTURA",
+      "C1SH008":"SECCIONADORA","C1TSIS015":"TSI","C1CI002":"COLADEIRA","C1CI003":"COLADEIRA",
+      "C1CORT5":"CORTADEIRAS","C1SLD04":"EMBALAGEM","C1SLD05":"EMBALAGEM","C1MA018":"MANUAIS I",
+      "C1MON01":"MONTAGEM","C1PH006":"PINTURA","C1SH009":"SECCIONADORA","C1TSIS016":"TSI",
+      "C1CI004":"COLADEIRA","C1CI005":"COLADEIRA","C1CORT6":"CORTADEIRAS","C1SLD06":"EMBALAGEM",
+      "C1SLD07":"EMBALAGEM","C1MA019":"MANUAIS I","C1MON02":"MONTAGEM","C1PH007":"PINTURA",
+      "C1SH010":"SECCIONADORA","C1TSIS017":"TSI","C1CI006":"COLADEIRA","C1CI007":"COLADEIRA",
+      "C1CORT7":"CORTADEIRAS","C1SLD08":"EMBALAGEM","C1SLD09":"EMBALAGEM","C1MA020":"MANUAIS I",
+      "C1MON831":"MONTAGEM","C1PH008":"PINTURA","C1SH011":"SECCIONADORA","C1TSIS018":"TSI",
+      "C1CI008":"COLADEIRA","C1CI009":"COLADEIRA","C1CORT8":"CORTADEIRAS","C1SLD10":"EMBALAGEM",
+      "C1SLD11":"EMBALAGEM","C1MA021":"MANUAIS I","C1MON832":"MONTAGEM","C1PH009":"PINTURA",
+      "C1SH012":"SECCIONADORA","C1CI010":"COLADEIRA","C1CI011":"COLADEIRA","C1CORT9":"CORTADEIRAS",
+      "C1SLD12":"EMBALAGEM","C1SLD13":"EMBALAGEM","C1MA022":"MANUAIS I","C1MON833":"MONTAGEM",
+      "C1PH010":"PINTURA","C1SI001":"SECCIONADORA","C1CI012":"COLADEIRA","C1CI013":"COLADEIRA",
+      "C1E1001":"CORTADEIRAS","C1SLD14":"EMBALAGEM","C1SLD15":"EMBALAGEM","C1MALP2":"MANUAIS I",
+      "C1MON840":"MONTAGEM","C1PH011":"PINTURA","C1SI002":"SECCIONADORA","C1CI014":"COLADEIRA",
+      "C1CI015":"COLADEIRA","C1E1002":"CORTADEIRAS","C1SLD16":"EMBALAGEM","C1SLD17":"EMBALAGEM",
+      "C1PH012":"PINTURA","C1SI003":"SECCIONADORA","C1CI016":"COLADEIRA","C1CJ001":"COLADEIRA",
+      "C1E1003":"CORTADEIRAS","C1SLD18":"EMBALAGEM","C1SLD19":"EMBALAGEM","C1PH013":"PINTURA",
+      "C1SI004":"SECCIONADORA","C1CJ002":"COLADEIRA","C1CJ003":"COLADEIRA","C1E1004":"CORTADEIRAS",
+      "C1SLD20":"EMBALAGEM","C1SOB001":"EMBALAGEM","C1PH014":"PINTURA","C1SI005":"SECCIONADORA",
+      "C1CJ004":"COLADEIRA","C1CJ005":"COLADEIRA","C1SOB002":"EMBALAGEM","C1SOB003":"EMBALAGEM",
+      "C1PIN":"PINTURA","C1SI006":"SECCIONADORA","C1CJ006":"COLADEIRA","C1CJ007":"COLADEIRA",
+      "C1SOB004":"EMBALAGEM","C1SOB005":"EMBALAGEM","Q1QUALIPIN1":"PINTURA","C1SI007":"SECCIONADORA",
+      "C1CJ008":"COLADEIRA","C1CJ009":"COLADEIRA","C1SOB006":"EMBALAGEM","Q1QUALIEMB1":"EMBALAGEM",
+      "Q1QUALIPIN2":"PINTURA","C1SI008":"SECCIONADORA","C1CJ010":"COLADEIRA","C1CJ011":"COLADEIRA",
+      "C1SI009":"SECCIONADORA","C1CJ012":"COLADEIRA","C1CJ013":"COLADEIRA","C1CJ014":"COLADEIRA",
+      "C1SM005":"SECCIONADORA","C1CJ016":"COLADEIRA","C1CL010":"COLADEIRA","C1SREJEITO":"SECCIONADORA",
+      "C1CLP":"COLADEIRA","C1CLP1":"COLADEIRA","Q1QUALISEC1":"SECCIONADORA","C1CLP2":"COLADEIRA",
+      "C1CLP3":"COLADEIRA","Q1QUALISEC2":"SECCIONADORA"
+    };
 
-            if (!response.ok) throw new Error("Erro na requisição com Supabase");
+    let estoqueGlobal = [];
 
-            const dadosBrutos = await response.json();
-            
-            // Mapeia os dados do Supabase para exibir os rótulos amigáveis na tela
-            inventoryData = dadosBrutos.map(item => ({
-                "Endereço": item.endereco || '-',
-                "Código": item.produto_codigo || '-',
-                "Descrição": item.produto_desc || '-',
-                "Quantidade": item.quantidade ?? 0,
-                "MovUn": item.movun_code || '-'
-            }));
-
-            const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            showStatus(`✓ Base ativa: <strong>Supabase (Nuvem)</strong> às ${agora} (${inventoryData.length} itens)`, 'success');
-            enableSearch();
-            performSearch();
-
-        } catch (error) {
-            console.error("Erro ao carregar dados do Supabase:", error);
-            showStatus(`❌ Erro de conexão com a base de dados em nuvem.`, 'status');
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        carregarEstoqueDoSupabase();
-        // Atualiza a tela sozinho a cada 2 minutos
-        setInterval(carregarEstoqueDoSupabase, 2 * 60 * 1000);
-    });
-
-    function enableSearch() {
-        const searchInput = document.getElementById('search-input');
-        searchInput.disabled = false;
-        searchInput.placeholder = "Digite o código, descrição ou endereço...";
-    }
-
-    function showStatus(message, type) {
-        const statusMsg = document.getElementById('status-msg');
-        statusMsg.innerHTML = message;
-        statusMsg.className = `status ${type}`;
-    }
-
-    const searchInput = document.getElementById('search-input');
-    const clearBtn = document.getElementById('clear-btn');
-
-    searchInput.addEventListener('input', function() {
-        clearBtn.style.display = this.value ? 'flex' : 'none';
-        performSearch();
-    });
-
-    function clearSearch() {
-        searchInput.value = '';
-        clearBtn.style.display = 'none';
-        performSearch();
-        searchInput.focus();
-    }
-
-    function highlightMatch(text, query) {
-        if (!query || text === "") return text !== "" ? text : '-';
-        const strText = String(text);
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return strText.replace(regex, '<span class="highlight-text">$1</span>');
-    }
-
-    function findQtyHeader(headers) {
-        return headers.find(h => {
-            const lower = h.toLowerCase();
-            return lower.includes('qtd') || lower.includes('quantidade') || lower.includes('saldo') || lower.includes('disponível') || lower.includes('disponivel');
+    // Função para buscar todos os dados do Supabase
+    async function carregarEstoque() {
+      const status = document.getElementById("status");
+      try {
+        const resposta = await fetch("https://qqxunufyleqwicgojlpe.supabase.co/rest/v1/rpc/obter_todo_estoque", {
+          method: "POST",
+          headers: {
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHVudWZ5bGVxd2ljZ29qbHBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDUyMzAsImV4cCI6MjEwMzM4MTIzMH0.EW_5ct0NIBmHZl76A3-gZZ_Qw6mNLZsoh_iFC7Ar7EQ",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxeHVudWZ5bGVxd2ljZ29qbHBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MDUyMzAsImV4cCI6MjEwMzM4MTIzMH0.EW_5ct0NIBmHZl76A3-gZZ_Qw6mNLZsoh_iFC7Ar7EQ",
+            "Content-Type": "application/json"
+          }
         });
-    }
 
-    function performSearch() {
-        const query = searchInput.value.trim().toLowerCase();
-        const resultsDiv = document.getElementById('results');
+        estoqueGlobal = await resposta.json();
         
-        if (query === "") {
-            resultsDiv.innerHTML = "";
-            return;
-        }
-
-        const filtered = inventoryData.filter(row => {
-            return Object.values(row).some(val => 
-                String(val).toLowerCase().includes(query)
-            );
+        // Mapeia cada registro adicionando a coluna 'setor' correspondente ao local
+        estoqueGlobal = estoqueGlobal.map(item => {
+          const localCod = (item.local || "").trim();
+          return {
+            ...item,
+            setor: MAPA_SETORES[localCod] || "OUTROS / NÃO MAPEADO"
+          };
         });
 
-        if (filtered.length === 0) {
-            resultsDiv.innerHTML = `<div class="no-result">Nenhum registro encontrado para "<strong>${searchInput.value}</strong>".</div>`;
-            return;
-        }
+        status.innerText = `Total de registros carregados: ${estoqueGlobal.length}`;
+        renderizarTabela(estoqueGlobal);
 
-        const headers = Object.keys(filtered[0]);
-        const qtyHeader = findQtyHeader(headers);
-
-        let minQty = Infinity;
-        let maxQty = -Infinity;
-
-        if (qtyHeader && filtered.length > 1) {
-            filtered.forEach(row => {
-                const val = parseFloat(String(row[qtyHeader]).replace(',', '.'));
-                if (!isNaN(val)) {
-                    if (val < minQty) minQty = val;
-                    if (val > maxQty) maxQty = val;
-                }
-            });
-        }
-
-        let html = `<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
-            <div class="count-badge">🔍 ${filtered.length} registro(s) encontrado(s)</div>`;
-
-        if (qtyHeader && filtered.length > 1 && minQty !== maxQty) {
-            html += `
-                <div class="legend-box">
-                    <div class="legend-item"><div class="legend-color legend-min"></div> Menor Qtd (Retirar)</div>
-                    <div class="legend-item"><div class="legend-color legend-max"></div> Maior Qtd (Destino)</div>
-                </div>
-            `;
-        }
-
-        html += `</div>`;
-
-        // CARDS MOBILE
-        html += `<div class="card-list">`;
-        filtered.forEach(row => {
-            let rowClass = "";
-            if (qtyHeader && filtered.length > 1 && minQty !== maxQty) {
-                const val = parseFloat(String(row[qtyHeader]).replace(',', '.'));
-                if (val === minQty) rowClass = "is-min";
-                else if (val === maxQty) rowClass = "is-max";
-            }
-
-            html += `<div class="item-card ${rowClass}"><div class="card-details-grid">`;
-            headers.forEach(header => {
-                const isQty = header === qtyHeader;
-                const valueFormatted = highlightMatch(row[header], query);
-                html += `
-                    <div class="detail-item">
-                        <span class="detail-label">${header}</span>
-                        <span class="detail-value ${isQty ? 'badge-qty' : ''}">${valueFormatted}</span>
-                    </div>
-                `;
-            });
-            html += `</div></div>`;
-        });
-        html += `</div>`;
-
-        // TABELA DESKTOP
-        html += `<div class="table-wrapper"><table><thead><tr>`;
-        headers.forEach(header => {
-            html += `<th>${header}</th>`;
-        });
-        html += `</tr></thead><tbody>`;
-
-        filtered.forEach(row => {
-            let rowClass = "";
-            if (qtyHeader && filtered.length > 1 && minQty !== maxQty) {
-                const val = parseFloat(String(row[qtyHeader]).replace(',', '.'));
-                if (val === minQty) rowClass = "is-min";
-                else if (val === maxQty) rowClass = "is-max";
-            }
-
-            html += `<tr class="${rowClass}">`;
-            headers.forEach(header => {
-                const isQty = header === qtyHeader;
-                const valueFormatted = highlightMatch(row[header], query);
-                html += `<td>${isQty ? `<span class="badge-qty">${valueFormatted}</span>` : valueFormatted}</td>`;
-            });
-            html += `</tr>`;
-        });
-
-        html += `</tbody></table></div>`;
-
-        resultsDiv.innerHTML = html;
+      } catch (erro) {
+        status.innerText = "Erro ao carregar dados do Supabase.";
+        console.error(erro);
+      }
     }
-</script>
 
+    // Função para desenhar as linhas na tabela
+    function renderizarTabela(dados) {
+      const tbody = document.getElementById("tabelaCorpo");
+      tbody.innerHTML = "";
+
+      dados.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="badge-setor">${item.setor}</span></td>
+          <td><strong>${item.local || ''}</strong></td>
+          <td>${item.codigo_produto || ''}</td>
+          <td>${item.descricao || ''}</td>
+          <td>${item.quantidade || 0}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Função para aplicar os dois filtros ao mesmo tempo
+    function aplicarFiltros() {
+      const setorSelecionado = document.getElementById("selectSetor").value.toLowerCase();
+      const buscaTexto = document.getElementById("inputBusca").value.toLowerCase();
+
+      const dadosFiltrados = estoqueGlobal.filter(item => {
+        const bateSetor = setorSelecionado === "" || item.setor.toLowerCase() === setorSelecionado;
+        
+        const bateTexto = buscaTexto === "" || 
+          (item.local && item.local.toLowerCase().includes(buscaTexto)) ||
+          (item.codigo_produto && item.codigo_produto.toLowerCase().includes(buscaTexto)) ||
+          (item.descricao && item.descricao.toLowerCase().includes(buscaTexto));
+
+        return bateSetor && bateTexto;
+      });
+
+      renderizarTabela(dadosFiltrados);
+      document.getElementById("status").innerText = `Exibindo ${dadosFiltrados.length} de ${estoqueGlobal.length} registros.`;
+    }
+
+    // Escutadores de eventos nos filtros
+    document.getElementById("selectSetor").addEventListener("change", aplicarFiltros);
+    document.getElementById("inputBusca").addEventListener("input", aplicarFiltros);
+
+    // Carrega os dados assim que abre a página
+    carregarEstoque();
+  </script>
 </body>
 </html>
