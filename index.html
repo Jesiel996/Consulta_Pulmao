@@ -115,7 +115,7 @@
         /* Multi-Select Dropdown Customizado */
         .multi-select-container {
             position: relative;
-            min-width: 220px;
+            min-width: 200px;
         }
 
         .select-btn {
@@ -435,14 +435,23 @@
     <!-- Status da Sincronização -->
     <div class="status" id="status-msg">🔄 Conectando ao Supabase...</div>
 
-    <!-- Filtro de Setores (Múltipla Seleção) + Campo de Pesquisa -->
+    <!-- Filtro de Setores (Múltipla Seleção) + Filtro de Trilhos + Campo de Pesquisa -->
     <div class="search-container">
         <div class="multi-select-container">
-            <button type="button" class="select-btn" id="sector-btn" onclick="toggleDropdown()" disabled>
+            <button type="button" class="select-btn" id="sector-btn" onclick="toggleDropdown('sector-dropdown')" disabled>
                 Selecionar Setores
             </button>
             <div class="dropdown-content" id="sector-dropdown">
                 <!-- Opções de setores serão injetadas via Javascript -->
+            </div>
+        </div>
+
+        <div class="multi-select-container">
+            <button type="button" class="select-btn" id="track-btn" onclick="toggleDropdown('track-dropdown')" disabled>
+                Selecionar Trilhos
+            </button>
+            <div class="dropdown-content" id="track-dropdown">
+                <!-- Opções de trilhos serão injetadas via Javascript -->
             </div>
         </div>
 
@@ -597,6 +606,7 @@
             });
 
             populareFiltroSetores();
+            populareFiltroTrilhos();
 
             const agora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             showStatus(`✓ Base ativa: <strong>Supabase (Nuvem)</strong> às ${agora} (${inventoryData.length} itens)`, 'success');
@@ -636,12 +646,65 @@
         });
     }
 
-    function toggleDropdown() {
-        const dropdown = document.getElementById('sector-dropdown');
-        dropdown.classList.toggle('show');
+    // Preenche a lista de trilhos dinamicamente com base nos setores selecionados
+    function populareFiltroTrilhos() {
+        const dropdown = document.getElementById('track-dropdown');
+        dropdown.innerHTML = '';
+
+        const selectedSectors = getSelectedSectors();
+        let trilhosExibicao = [];
+
+        if (selectedSectors.length > 0) {
+            selectedSectors.forEach(setor => {
+                if (SETORES_TRILHOS[setor]) {
+                    trilhosExibicao = trilhosExibicao.concat(SETORES_TRILHOS[setor]);
+                }
+            });
+            // Também busca trilhos carregados do Supabase que correspondam aos setores selecionados
+            const trilhosDosDados = inventoryData
+                .filter(item => selectedSectors.includes(item["Setor"]))
+                .map(item => String(item["Endereço"]).trim().toUpperCase());
+            trilhosExibicao = [...new Set([...trilhosExibicao, ...trilhosDosDados])];
+        } else {
+            // Se nenhum setor selecionado, carrega todos os trilhos conhecidos e presentes nos dados
+            const todosTrilhosMap = Object.values(SETORES_TRILHOS).flat();
+            const trilhosDosDados = inventoryData.map(item => String(item["Endereço"]).trim().toUpperCase());
+            trilhosExibicao = [...new Set([...todosTrilhosMap, ...trilhosDosDados])];
+        }
+
+        trilhosExibicao.sort().forEach(trilho => {
+            if (trilho && trilho !== '-') {
+                const label = document.createElement('label');
+                label.className = 'dropdown-option';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = trilho;
+                checkbox.onchange = onTrackChange;
+
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(trilho));
+                dropdown.appendChild(label);
+            }
+        });
     }
 
-    // Fecha o dropdown de setores se clicar fora dele
+    function toggleDropdown(id) {
+        const dropdown = document.getElementById(id);
+        const isOpen = dropdown.classList.contains('show');
+        
+        // Fecha todos os dropdowns abertos antes de abrir um
+        const dropdowns = document.getElementsByClassName("dropdown-content");
+        for (let i = 0; i < dropdowns.length; i++) {
+            dropdowns[i].classList.remove('show');
+        }
+
+        if (!isOpen) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    // Fecha o dropdown se clicar fora dele
     window.onclick = function(event) {
         if (!event.target.matches('.select-btn') && !event.target.closest('.dropdown-content')) {
             const dropdowns = document.getElementsByClassName("dropdown-content");
@@ -659,6 +722,11 @@
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
+    function getSelectedTracks() {
+        const checkboxes = document.querySelectorAll('#track-dropdown input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
     function onSectorChange() {
         const selected = getSelectedSectors();
         const btn = document.getElementById('sector-btn');
@@ -669,6 +737,23 @@
             btn.textContent = selected[0];
         } else {
             btn.textContent = `${selected.length} Setores selecionados`;
+        }
+        
+        // Atualiza as opções do filtro de trilho e faz a pesquisa
+        populareFiltroTrilhos();
+        onTrackChange();
+    }
+
+    function onTrackChange() {
+        const selected = getSelectedTracks();
+        const btn = document.getElementById('track-btn');
+        
+        if (selected.length === 0) {
+            btn.textContent = 'Todos os Trilhos';
+        } else if (selected.length === 1) {
+            btn.textContent = selected[0];
+        } else {
+            btn.textContent = `${selected.length} Trilhos selecionados`;
         }
         
         performSearch();
@@ -683,9 +768,11 @@
     function enableSearch() {
         const searchInput = document.getElementById('search-input');
         const sectorBtn = document.getElementById('sector-btn');
+        const trackBtn = document.getElementById('track-btn');
         
         searchInput.disabled = false;
         sectorBtn.disabled = false;
+        trackBtn.disabled = false;
         searchInput.placeholder = "Digite o código, descrição ou endereço...";
     }
 
@@ -727,10 +814,11 @@
     function performSearch() {
         const query = searchInput.value.trim().toLowerCase();
         const selectedSectors = getSelectedSectors();
+        const selectedTracks = getSelectedTracks();
         const resultsDiv = document.getElementById('results');
         
-        // Se nem um setor for selecionado e nenhuma palavra de busca for digitada, limpa a exibição
-        if (query === "" && selectedSectors.length === 0) {
+        // Se nenhum setor, trilho ou busca por texto for acionada, limpa a exibição
+        if (query === "" && selectedSectors.length === 0 && selectedTracks.length === 0) {
             resultsDiv.innerHTML = "";
             return;
         }
@@ -747,20 +835,26 @@
             const enderecoRow = String(row["Endereço"]).trim().toUpperCase();
             const setorRow = row["Setor"];
 
-            // 1. Filtro por Setor/Trilho (Permite múltipla seleção)
+            // 1. Filtro por Setor
             let matchesSector = true;
             if (selectedSectors.length > 0) {
                 const pertenceAoTrilho = trilhosValidos.includes(enderecoRow);
                 const pertenceAoSetor = selectedSectors.includes(setorRow);
                 matchesSector = pertenceAoTrilho || pertenceAoSetor;
             }
+
+            // 2. Filtro por Trilho
+            let matchesTrack = true;
+            if (selectedTracks.length > 0) {
+                matchesTrack = selectedTracks.includes(enderecoRow);
+            }
             
-            // 2. Filtro por texto digitado
+            // 3. Filtro por texto digitado
             const matchesQuery = query === "" || Object.values(row).some(val => 
                 String(val).toLowerCase().includes(query)
             );
 
-            return matchesSector && matchesQuery;
+            return matchesSector && matchesTrack && matchesQuery;
         });
 
         if (filtered.length === 0) {
